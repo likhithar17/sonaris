@@ -1,0 +1,30 @@
+## Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+# Python cache
+__pycache__/
+*.pyc
+
+# YOLO model weights
+*.pt
