@@ -1,10 +1,118 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import "./App.css";
 
 const API_BASE = "http://127.0.0.1:8000";
 
 // SONARIS — AI-Powered Underwater Anomaly Intelligence
 // Replace the contents of frontend/src/App.jsx with this file.
+
+
+function SonarVisualizer({
+  src,
+  alt,
+  detections,
+  selectedTarget,
+  onSelect,
+  sameTarget,
+  formatLabel,
+  formatConfidence,
+  getRisk,
+  getRiskClass,
+}) {
+  const imageRef = useRef(null);
+
+  if (!src) return null;
+
+  return (
+    <div className="sonar-visualizer">
+      <img
+        ref={imageRef}
+        src={src}
+        alt={alt}
+        className="sonar-image"
+      />
+
+      <div className="sonar-overlay">
+        {detections.map((target, index) => {
+          const bbox = Array.isArray(target?.bbox)
+            ? target.bbox
+            : null;
+
+          if (!bbox || bbox.length < 4) return null;
+
+          const [x1, y1, x2, y2] = bbox.map(Number);
+          const naturalWidth =
+            imageRef.current?.naturalWidth || 640;
+          const naturalHeight =
+            imageRef.current?.naturalHeight || 640;
+
+          if (
+            !Number.isFinite(x1) ||
+            !Number.isFinite(y1) ||
+            !Number.isFinite(x2) ||
+            !Number.isFinite(y2)
+          ) {
+            return null;
+          }
+
+          const risk = getRisk(target);
+          const riskClass = getRiskClass(risk);
+          const selected = sameTarget(selectedTarget, target);
+
+          const style = {
+            left: `${(x1 / naturalWidth) * 100}%`,
+            top: `${(y1 / naturalHeight) * 100}%`,
+            width: `${((x2 - x1) / naturalWidth) * 100}%`,
+            height: `${((y2 - y1) / naturalHeight) * 100}%`,
+          };
+
+          return (
+            <button
+              type="button"
+              key={`overlay-${target.label || "target"}-${index}`}
+              className={`sonar-target-box ${riskClass} ${
+                selected ? "selected" : ""
+              }`}
+              style={style}
+              onClick={() => onSelect(target)}
+              title={`T${String(index + 1).padStart(3, "0")} — ${formatLabel(
+                target.label
+              )}`}
+            >
+              <span className="sonar-target-label">
+                <strong>
+                  T{String(index + 1).padStart(3, "0")}
+                </strong>
+                <span>{formatLabel(target.label)}</span>
+                <em>{formatConfidence(target.confidence_rate)}</em>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {detections.some((target) => Array.isArray(target?.bbox)) && (
+        <div className="sonar-overlay-legend">
+          <span>
+            <i className="legend-dot high" />
+            High
+          </span>
+          <span>
+            <i className="legend-dot medium" />
+            Medium
+          </span>
+          <span>
+            <i className="legend-dot low" />
+            Low
+          </span>
+          <span className="legend-hint">
+            Click a box to inspect
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function App() {
   const [page, setPage] = useState("dashboard");
@@ -823,9 +931,17 @@ function App() {
 
               <div className="sonar-view">
                 {visualization ? (
-                  <img
+                  <SonarVisualizer
                     src={visualization}
                     alt="SONARIS AI sonar analysis"
+                    detections={detections}
+                    selectedTarget={selectedTarget}
+                    onSelect={setSelectedTarget}
+                    sameTarget={sameTarget}
+                    formatLabel={formatLabel}
+                    formatConfidence={formatConfidence}
+                    getRisk={getRisk}
+                    getRiskClass={getRiskClass}
                   />
                 ) : sonarFile ? (
                   <img
@@ -1007,14 +1123,30 @@ function App() {
 
             <div className="sonar-view">
               {analysisResult?.visual_render_base64 ? (
-                <img
+                <SonarVisualizer
                   src={analysisResult.visual_render_base64}
                   alt="SONARIS analysis"
+                  detections={detections}
+                  selectedTarget={selectedTarget}
+                  onSelect={setSelectedTarget}
+                  sameTarget={sameTarget}
+                  formatLabel={formatLabel}
+                  formatConfidence={formatConfidence}
+                  getRisk={getRisk}
+                  getRiskClass={getRiskClass}
                 />
               ) : analysisResult?.visual_render_url ? (
-                <img
+                <SonarVisualizer
                   src={analysisResult.visual_render_url}
                   alt="SONARIS analysis"
+                  detections={detections}
+                  selectedTarget={selectedTarget}
+                  onSelect={setSelectedTarget}
+                  sameTarget={sameTarget}
+                  formatLabel={formatLabel}
+                  formatConfidence={formatConfidence}
+                  getRisk={getRisk}
+                  getRiskClass={getRiskClass}
                 />
               ) : (
                 <div
@@ -1139,3 +1271,4 @@ function App() {
 }
 
 export default App;
+
