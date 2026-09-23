@@ -1,118 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 const API_BASE = "http://127.0.0.1:8000";
 
 // SONARIS — AI-Powered Underwater Anomaly Intelligence
 // Replace the contents of frontend/src/App.jsx with this file.
-
-
-function SonarVisualizer({
-  src,
-  alt,
-  detections,
-  selectedTarget,
-  onSelect,
-  sameTarget,
-  formatLabel,
-  formatConfidence,
-  getRisk,
-  getRiskClass,
-}) {
-  const imageRef = useRef(null);
-
-  if (!src) return null;
-
-  return (
-    <div className="sonar-visualizer">
-      <img
-        ref={imageRef}
-        src={src}
-        alt={alt}
-        className="sonar-image"
-      />
-
-      <div className="sonar-overlay">
-        {detections.map((target, index) => {
-          const bbox = Array.isArray(target?.bbox)
-            ? target.bbox
-            : null;
-
-          if (!bbox || bbox.length < 4) return null;
-
-          const [x1, y1, x2, y2] = bbox.map(Number);
-          const naturalWidth =
-            imageRef.current?.naturalWidth || 640;
-          const naturalHeight =
-            imageRef.current?.naturalHeight || 640;
-
-          if (
-            !Number.isFinite(x1) ||
-            !Number.isFinite(y1) ||
-            !Number.isFinite(x2) ||
-            !Number.isFinite(y2)
-          ) {
-            return null;
-          }
-
-          const risk = getRisk(target);
-          const riskClass = getRiskClass(risk);
-          const selected = sameTarget(selectedTarget, target);
-
-          const style = {
-            left: `${(x1 / naturalWidth) * 100}%`,
-            top: `${(y1 / naturalHeight) * 100}%`,
-            width: `${((x2 - x1) / naturalWidth) * 100}%`,
-            height: `${((y2 - y1) / naturalHeight) * 100}%`,
-          };
-
-          return (
-            <button
-              type="button"
-              key={`overlay-${target.label || "target"}-${index}`}
-              className={`sonar-target-box ${riskClass} ${
-                selected ? "selected" : ""
-              }`}
-              style={style}
-              onClick={() => onSelect(target)}
-              title={`T${String(index + 1).padStart(3, "0")} — ${formatLabel(
-                target.label
-              )}`}
-            >
-              <span className="sonar-target-label">
-                <strong>
-                  T{String(index + 1).padStart(3, "0")}
-                </strong>
-                <span>{formatLabel(target.label)}</span>
-                <em>{formatConfidence(target.confidence_rate)}</em>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {detections.some((target) => Array.isArray(target?.bbox)) && (
-        <div className="sonar-overlay-legend">
-          <span>
-            <i className="legend-dot high" />
-            High
-          </span>
-          <span>
-            <i className="legend-dot medium" />
-            Medium
-          </span>
-          <span>
-            <i className="legend-dot low" />
-            Low
-          </span>
-          <span className="legend-hint">
-            Click a box to inspect
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function App() {
   const [page, setPage] = useState("dashboard");
@@ -124,6 +16,9 @@ function App() {
   const [longitude, setLongitude] = useState("");
   const [heading, setHeading] = useState("");
   const [selectedTarget, setSelectedTarget] = useState(null);
+  const [memoryRecords, setMemoryRecords] = useState([]);
+  const [memoryLoading, setMemoryLoading] = useState(false);
+  const [memoryError, setMemoryError] = useState("");
 
   const detections = analysisResult?.detections || [];
 
@@ -254,6 +149,17 @@ function App() {
     return normalized;
   };
 
+  const loadMemory = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/memory`);
+    const data = await response.json();
+
+    setMemoryRecords(Array.isArray(data) ? data : []);
+  } catch (error) {
+    console.error("Failed to load seafloor memory:", error);
+  }
+};
+
   const analyzeSonar = async () => {
     if (!sonarFile) {
       setError("Please select a sonar image first.");
@@ -328,6 +234,7 @@ function App() {
         );
 
         setAnalysisResult(normalized);
+        loadMemory();
         setPage("results");
         return;
       }
@@ -426,15 +333,18 @@ function App() {
           Targets
         </button>
 
-        <button onClick={() => setPage("dashboard")}>
+        <button onClick={() => setPage("memory")}>
           <span>◉</span>
           Seafloor Memory
         </button>
 
-        <button onClick={() => setPage("dashboard")}>
-          <span>↔</span>
-          Change Detection
-        </button>
+        <button
+  className={page === "change-detection" ? "active" : ""}
+  onClick={() => setPage("change-detection")}
+>
+  <span>↔</span>
+  Change Detection
+</button>
 
         <button onClick={() => setPage("dashboard")}>
           <span>⚠</span>
@@ -513,6 +423,15 @@ function App() {
             <span>VERIFICATION</span>
             <strong>{verification.status}</strong>
           </div>
+          <div className="detail-box">
+  <span>SEAFLOOR MEMORY MATCH</span>
+  <strong>{target.comparison_status || "N/A"}</strong>
+  {target.previous_target_id && (
+    <small>
+      Previous Target: {target.previous_target_id}
+    </small>
+  )}
+</div>
 
           <div className="detail-box">
             <span>TARGET TYPE</span>
@@ -859,9 +778,410 @@ function App() {
     );
   }
 
+  if (page === "change-detection") {
+  const currentDetections = analysisResult?.detections || [];
+
+  const newTargets = currentDetections.filter(
+    (target) => target.comparison_status === "NEW"
+  );
+
+  const existingTargets = currentDetections.filter(
+    (target) => target.comparison_status === "EXISTING"
+  );
+
+  const reviewTargets = currentDetections.filter(
+    (target) =>
+      target.status === "FLAGGED_FOR_REVIEW" ||
+      target.multi_step_verification?.gate3_status === "UNKNOWN"
+  );
+
+  return (
+    <div className="app">
+      <Sidebar />
+
+      <main className="main-content">
+        <Topbar
+          title="Change Detection"
+          subtitle="Compare current survey targets with seafloor memory"
+        />
+
+        <div className="stats">
+          <div className="stat-card">
+            <span>CURRENT TARGETS</span>
+            <strong>{currentDetections.length}</strong>
+            <small>Targets in latest survey</small>
+          </div>
+
+          <div className="stat-card">
+            <span>NEW TARGETS</span>
+            <strong>{newTargets.length}</strong>
+            <small>Not found in previous memory</small>
+          </div>
+
+          <div className="stat-card">
+            <span>EXISTING TARGETS</span>
+            <strong>{existingTargets.length}</strong>
+            <small>Matched with previous survey</small>
+          </div>
+
+          <div className="stat-card warning">
+            <span>NEEDS REVIEW</span>
+            <strong>{reviewTargets.length}</strong>
+            <small>Low-confidence or uncertain</small>
+          </div>
+        </div>
+
+        <div className="form-card">
+          <div className="card-header">
+            <div>
+              <span className="eyebrow">SURVEY COMPARISON</span>
+              <h2>Seafloor Change Analysis</h2>
+            </div>
+          </div>
+
+          {!analysisResult ? (
+            <div style={{ padding: "30px 0", opacity: 0.7 }}>
+              <h3>No current survey available</h3>
+              <p>
+                Analyze a sonar survey first. SONARIS will then compare the
+                detected targets with previously stored seafloor memory.
+              </p>
+
+              <button
+                className="primary-button"
+                onClick={startNewSurvey}
+                style={{ marginTop: "16px" }}
+              >
+                ＋ Start New Survey
+              </button>
+            </div>
+          ) : currentDetections.length === 0 ? (
+            <div style={{ padding: "30px 0", opacity: 0.7 }}>
+              <h3>No targets detected</h3>
+              <p>
+                The current survey does not contain any detected anomalies.
+              </p>
+            </div>
+          ) : (
+            <div className="memory-list">
+              {currentDetections.map((target, index) => {
+                const status =
+                  target.change_status || target.comparison_status || "UNKNOWN";
+
+                const statusClass =
+                  status === "NEW"
+                    ? "high"
+                    : status === "EXISTING"
+                    ? "low"
+                    : "medium";
+
+                return (
+                  <div
+                    className="memory-item"
+                    key={`${target.target_id || "target"}-${index}`}
+                  >
+                    <div>
+                      <strong>
+                        {target.target_id || `T${String(index + 1).padStart(3, "0")}`}
+                      </strong>
+
+                      <p>
+                        {formatLabel(
+                          target.label ||
+                            target.predicted_class ||
+                            "Unknown target"
+                        )}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span className={statusClass}>
+                        {status}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span>
+                        Confidence:{" "}
+                        {formatConfidence(target.confidence)}
+                      </span>
+
+                      <span>
+                        IoU:{" "}
+                        {target.comparison_iou !== undefined
+                          ? Number(target.comparison_iou).toFixed(2)
+                          : "N/A"}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span>
+                        Previous Target:{" "}
+                        {target.previous_target_id || "None"}
+                      </span>
+
+                      <span>
+                        Previous Survey:{" "}
+                        {target.previous_survey_id || "None"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
   // ------------------------------------------------------------
   // RESULTS
   // ------------------------------------------------------------
+    // SEAFLOOR MEMORY
+  if (page === "memory") {
+    const surveyGroups = memoryRecords.reduce((groups, record) => {
+      const surveyId = record.survey_id || "UNKNOWN SURVEY";
+
+      if (!groups[surveyId]) {
+        groups[surveyId] = [];
+      }
+
+      groups[surveyId].push(record);
+      return groups;
+    }, {});
+
+    return (
+      <div className="app">
+        <Sidebar />
+
+        <main className="main-content">
+          <Topbar
+            title="Seafloor Memory"
+            subtitle="Persistent survey archive of previously detected underwater targets"
+          />
+
+          <div className="form-card">
+            <div className="card-header">
+              <div>
+                <span className="eyebrow">SEAFLOOR MEMORY</span>
+                <h2>Survey Archive</h2>
+              </div>
+
+              <span className="queue-count">
+                {memoryRecords.length}
+              </span>
+            </div>
+
+            {memoryLoading ? (
+              <p>Loading seafloor memory...</p>
+            ) : memoryError ? (
+              <p>{memoryError}</p>
+            ) : memoryRecords.length === 0 ? (
+              <p>No seafloor targets have been stored yet.</p>
+            ) : (
+              <div className="memory-list">
+                {Object.entries(surveyGroups).map(([surveyId, targets]) => {
+                  const surveyReference = targets[0] || {};
+
+                  return (
+                    <div
+                      className="survey-group"
+                      key={surveyId}
+                      style={{
+                        marginBottom: "28px",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: "14px",
+                        overflow: "hidden",
+                        background: "rgba(255,255,255,0.02)",
+                      }}
+                    >
+                      <div
+                        className="survey-header"
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: "20px",
+                          padding: "20px 22px",
+                          borderBottom: "1px solid rgba(255,255,255,0.08)",
+                        }}
+                      >
+                        <div>
+                          <span className="eyebrow">SURVEY</span>
+                          <h3 style={{ margin: "6px 0 8px" }}>{surveyId}</h3>
+
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: "14px 24px",
+                              opacity: 0.72,
+                              fontSize: "13px",
+                            }}
+                          >
+                            <span>
+                              Location: {surveyReference.latitude ?? "N/A"},{" "}
+                              {surveyReference.longitude ?? "N/A"}
+                            </span>
+
+                            <span>
+                              Heading: {surveyReference.heading ?? "N/A"}°
+                            </span>
+                          </div>
+                        </div>
+
+                        <span className="queue-count">
+                          {targets.length}{" "}
+                          {targets.length === 1 ? "TARGET" : "TARGETS"}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "1px",
+                        }}
+                      >
+                        {targets.map((record, index) => {
+                          const verificationStatus =
+                            record.verification_status ||
+                            record.multi_step_verification?.gate3_status ||
+                            "N/A";
+
+                          const changeStatus =
+                            record.change_status ||
+                            record.comparison_status ||
+                            "N/A";
+
+                          const shadowConfirmed =
+                            record.shadow_confirmed ??
+                            record.multi_step_verification?.gate2_shadow_confirmed ??
+                            false;
+
+                          return (
+                            <div
+                              className="memory-item"
+                              key={`${surveyId}-${record.target_id || "target"}-${index}`}
+                              style={{ borderRadius: 0 }}
+                            >
+                              <div>
+                                <span className="eyebrow">TARGET</span>
+                                <strong>
+                                  {record.target_id || `T${index + 1}`}
+                                </strong>
+
+                                <p>
+                                  {formatLabel(
+                                    record.predicted_class ||
+                                      record.label ||
+                                      "Unknown target"
+                                  )}
+                                </p>
+                              </div>
+
+                              <div>
+                                <span>
+                                  Confidence:{" "}
+                                  {formatConfidence(record.confidence)}
+                                </span>
+
+                                <span>
+                                  Verification: {verificationStatus}
+                                </span>
+
+                                <span>
+                                  Change: {changeStatus}
+                                </span>
+                              </div>
+
+                              <div>
+                                <span>
+                                  Shadow:{" "}
+                                  {shadowConfirmed
+                                    ? "CONFIRMED"
+                                    : "NOT CONFIRMED"}
+                                </span>
+
+                                <span>
+                                  Shadow Score:{" "}
+                                  {record.shadow_score ?? "N/A"}
+                                </span>
+
+                                <span>
+                                  IoU:{" "}
+                                  {record.comparison_iou !== undefined
+                                    ? Number(record.comparison_iou).toFixed(2)
+                                    : "N/A"}
+                                </span>
+                              </div>
+
+                              <div>
+                                <span>
+                                  Location: {record.latitude ?? "N/A"},{" "}
+                                  {record.longitude ?? "N/A"}
+                                </span>
+
+                                <span>
+                                  Heading: {record.heading ?? "N/A"}°
+                                </span>
+
+                                <span>
+                                  Previous Target:{" "}
+                                  {record.previous_target_id || "None"}
+                                </span>
+
+                                <span>
+                                  Previous Survey:{" "}
+                                  {record.previous_survey_id || "None"}
+                                </span>
+                              </div>
+
+                              <div
+                                style={{
+                                  gridColumn: "1 / -1",
+                                  paddingTop: "12px",
+                                  marginTop: "2px",
+                                  borderTop:
+                                    "1px solid rgba(255,255,255,0.06)",
+                                  display: "grid",
+                                  gridTemplateColumns:
+                                    "minmax(0, 1fr) minmax(0, 1fr)",
+                                  gap: "10px 24px",
+                                }}
+                              >
+                                <span>
+                                  Bounding Box:{" "}
+                                  {Array.isArray(record.bbox)
+                                    ? `[${record.bbox.join(", ")}]`
+                                    : "N/A"}
+                                </span>
+
+                                <span>
+                                  Detected:{" "}
+                                  {record.timestamp
+                                    ? new Date(
+                                        record.timestamp
+                                      ).toLocaleString()
+                                    : "N/A"}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (page === "results") {
     if (!analysisResult) {
       return (
@@ -931,17 +1251,9 @@ function App() {
 
               <div className="sonar-view">
                 {visualization ? (
-                  <SonarVisualizer
+                  <img
                     src={visualization}
                     alt="SONARIS AI sonar analysis"
-                    detections={detections}
-                    selectedTarget={selectedTarget}
-                    onSelect={setSelectedTarget}
-                    sameTarget={sameTarget}
-                    formatLabel={formatLabel}
-                    formatConfidence={formatConfidence}
-                    getRisk={getRisk}
-                    getRiskClass={getRiskClass}
                   />
                 ) : sonarFile ? (
                   <img
@@ -984,7 +1296,53 @@ function App() {
               </div>
             </div>
 
-            <div className="priority-card">
+{/* Sonar Quality & Preprocessing */}
+<div className="analysis-card preprocessing-card" style={{ marginTop: "16px" }}>
+  <div className="card-header">
+    <div>
+      <span className="eyebrow">SONAR PROCESSING</span>
+      <h3>Quality & Preprocessing</h3>
+    </div>
+  </div>
+
+  {analysisResult.preprocessing_info ? (
+    <>
+      <div className="target-detail-grid">
+        <div className="detail-box">
+          <span>BRIGHTNESS</span>
+          <strong>
+            {analysisResult.preprocessing_info.quality?.brightness ?? "N/A"}
+          </strong>
+        </div>
+
+        <div className="detail-box">
+          <span>CONTRAST</span>
+          <strong>
+            {analysisResult.preprocessing_info.quality?.contrast ?? "N/A"}
+          </strong>
+        </div>
+
+        <div className="detail-box">
+          <span>NOISE ESTIMATE</span>
+          <strong>
+            {analysisResult.preprocessing_info.quality?.noise_estimate ?? "N/A"}
+          </strong>
+        </div>
+
+        <div className="detail-box">
+          <span>PREPROCESSING STEP</span>
+          <strong>
+            {analysisResult.preprocessing_info.steps?.join(", ") || "None"}
+          </strong>
+        </div>
+      </div>
+    </>
+  ) : (
+    <p>Preprocessing information unavailable.</p>
+  )}
+</div>
+
+<div className="priority-card">
               <div className="card-header">
                 <div>
                   <span className="eyebrow">
@@ -1123,30 +1481,14 @@ function App() {
 
             <div className="sonar-view">
               {analysisResult?.visual_render_base64 ? (
-                <SonarVisualizer
+                <img
                   src={analysisResult.visual_render_base64}
                   alt="SONARIS analysis"
-                  detections={detections}
-                  selectedTarget={selectedTarget}
-                  onSelect={setSelectedTarget}
-                  sameTarget={sameTarget}
-                  formatLabel={formatLabel}
-                  formatConfidence={formatConfidence}
-                  getRisk={getRisk}
-                  getRiskClass={getRiskClass}
                 />
               ) : analysisResult?.visual_render_url ? (
-                <SonarVisualizer
+                <img
                   src={analysisResult.visual_render_url}
                   alt="SONARIS analysis"
-                  detections={detections}
-                  selectedTarget={selectedTarget}
-                  onSelect={setSelectedTarget}
-                  sameTarget={sameTarget}
-                  formatLabel={formatLabel}
-                  formatConfidence={formatConfidence}
-                  getRisk={getRisk}
-                  getRiskClass={getRiskClass}
                 />
               ) : (
                 <div
@@ -1271,4 +1613,3 @@ function App() {
 }
 
 export default App;
-

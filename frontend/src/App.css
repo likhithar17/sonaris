@@ -1343,3 +1343,415 @@ button:disabled {
     width: 100%;
   }
 }
+/* =========================================================
+   SEAFLOOR MEMORY / CHANGE DETECTION
+   ========================================================= */
+
+.memory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.memory-item {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1.1fr 1.4fr;
+  align-items: center;
+  gap: 22px;
+
+  padding: 18px 20px;
+
+  border-bottom: 1px solid rgba(76, 124, 136, 0.10);
+
+  background: rgba(8, 22, 29, 0.28);
+
+  transition:
+    background 0.2s ease,
+    padding-left 0.2s ease;
+}
+
+.memory-item:hover {
+  background: rgba(38, 108, 120, 0.07);
+}
+
+.memory-item > div {
+  min-width: 0;
+}
+
+.memory-item strong {
+  display: block;
+
+  color: #dcecf0;
+
+  font-size: 12px;
+  font-weight: 650;
+
+  letter-spacing: 0.3px;
+}
+
+.memory-item p {
+  margin: 6px 0 0;
+
+  color: #6f8b95;
+
+  font-size: 10px;
+}
+
+.memory-item span {
+  display: block;
+
+  color: #78939d;
+
+  font-size: 9px;
+
+  line-height: 1.7;
+}
+
+.memory-item .high,
+.memory-item .medium,
+.memory-item .low {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 72px;
+
+  padding: 6px 10px;
+
+  border-radius: 6px;
+
+  font-size: 8px;
+  font-weight: 750;
+
+  letter-spacing: 0.7px;
+}
+
+.memory-item .high {
+  border: 1px solid rgba(73, 190, 151, 0.18);
+  background: rgba(73, 190, 151, 0.08);
+
+  color: #62c8a4;
+}
+
+.memory-item .medium {
+  border: 1px solid rgba(218, 166, 81, 0.18);
+  background: rgba(218, 166, 81, 0.08);
+
+  color: #d9ad61;
+}
+
+.memory-item .low {
+  border: 1px solid rgba(73, 190, 151, 0.17);
+  background: rgba(73, 190, 151, 0.07);
+
+  color: #62c8a4;
+}
+/* =========================================================
+   TARGET DETAILS PANEL
+   ========================================================= */
+
+.target-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px;
+}
+
+.detail-box {
+  min-width: 0;
+  padding: 13px 14px;
+
+  border: 1px solid rgba(86, 144, 157, 0.12);
+  border-radius: 8px;
+
+  background: rgba(8, 22, 29, 0.55);
+}
+
+.detail-box span,
+.coordinates-section span,
+.bbox-section > span,
+.target-action-bar span {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: #587580;
+
+  font-size: 7px;
+  font-weight: 700;
+
+  letter-spacing: 1px;
+}
+
+.detail-box strong {
+  display: block;
+
+  color: #d8e9ed;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  line-height: 1.45;
+
+  overflow-wrap: anywhere;
+}
+
+.detail-box small {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #65808a;
+
+  font-size: 8px;
+}
+
+
+/* VERIFICATION */
+
+.verification-section,
+.coordinates-section {
+  padding: 16px;
+
+  border-top: 1px solid rgba(83, 133, 145, 0.10);
+}
+
+.verification-section .section-title,
+.coordinates-section .section-title {
+  margin-bottom: 14px;
+}
+
+.verification-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 12px 0;
+
+  border-bottom: 1px solid rgba(76, 124, 136, 0.08);
+}
+
+.verification-row:last-child {
+  border-bottom: none;
+}
+
+.verification-row > div:nth-child(2) {
+  min-width: 0;
+}
+
+.gate-number {
+  color: #4f7782;
+
+  font-size: 8px;
+  font-weight: 700;
+
+  letter-spacing: 0.5px;
+}
+
+.verification-row strong {
+  display: block;
+
+  color: #cfe1e6;
+
+  font-size: 10px;
+  font-weight: 600;
+
+  line-height: 1.4;
+}
+
+.verification-row span {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #607b85;
+
+  font-size: 8px;
+
+  line-height: 1.4;
+}
+
+.verification-pass,
+.verification-fail {
+  min-width: 52px;
+
+  padding: 5px 7px;
+
+  border-radius: 5px;
+
+  text-align: center;
+
+  font-size: 7px;
+  font-weight: 750;
+
+  letter-spacing: 0.6px;
+}
+
+.verification-pass {
+  border: 1px solid rgba(73, 190, 151, 0.18);
+  background: rgba(73, 190, 151, 0.07);
+
+  color: #62c8a4;
+}
+
+.verification-fail {
+  border: 1px solid rgba(225, 94, 86, 0.18);
+  background: rgba(225, 94, 86, 0.07);
+
+  color: #e77970;
+}
+
+
+/* SEAFLOOR MEMORY */
+
+.coordinate-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  gap: 10px;
+}
+
+.coordinate-box {
+  padding: 12px 13px;
+
+  border: 1px solid rgba(86, 144, 157, 0.11);
+  border-radius: 7px;
+
+  background: rgba(8, 22, 29, 0.45);
+}
+
+.coordinate-box strong {
+  display: block;
+
+  color: #b8d0d6;
+
+  font-size: 10px;
+  font-weight: 550;
+
+  line-height: 1.4;
+}
+
+
+/* BOUNDING BOX */
+
+.bbox-section {
+  padding: 14px 16px;
+
+  border-top: 1px solid rgba(83, 133, 145, 0.10);
+}
+
+.bbox-content {
+  padding: 10px 11px;
+
+  border: 1px solid rgba(86, 144, 157, 0.10);
+  border-radius: 7px;
+
+  background: rgba(5, 18, 25, 0.45);
+
+  color: #89a7af;
+
+  font-family: monospace;
+  font-size: 9px;
+
+  overflow-wrap: anywhere;
+}
+
+
+/* ACTION BAR */
+
+.target-action-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  gap: 10px;
+
+  padding: 15px 16px;
+
+  border-top: 1px solid rgba(83, 133, 145, 0.10);
+}
+
+.target-action-bar > div {
+  min-width: 0;
+
+  padding: 11px 12px;
+
+  border: 1px solid rgba(86, 144, 157, 0.10);
+  border-radius: 7px;
+
+  background: rgba(8, 22, 29, 0.4);
+}
+
+.target-action-bar strong {
+  display: block;
+
+  color: #c8dde2;
+
+  font-size: 10px;
+  font-weight: 600;
+
+  line-height: 1.4;
+
+  overflow-wrap: anywhere;
+}
+
+.risk-text.high {
+  color: #e77970;
+}
+
+.risk-text.medium {
+  color: #d9ad61;
+}
+
+.risk-text.low {
+  color: #62c8a4;
+}
+/* ------------------------------------------------------------
+   PREPROCESSING CARD
+------------------------------------------------------------ */
+
+.preprocessing-card {
+  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.preprocessing-card .card-header {
+  padding: 0 0 20px 0;
+}
+
+.preprocessing-card .target-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.preprocessing-card .detail-box {
+  min-width: 0;
+  padding: 18px 20px;
+  box-sizing: border-box;
+}
+
+.preprocessing-card .detail-box span {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.preprocessing-card .detail-box strong {
+  display: block;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.preprocessing-card .detail-box:last-child strong {
+  white-space: normal;
+}
+
+@media (max-width: 900px) {
+  .preprocessing-card .target-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
