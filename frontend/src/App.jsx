@@ -173,11 +173,33 @@ function App() {
     const formData = new FormData();
     formData.append("file", sonarFile);
 
+    // Send both naming conventions used by the SONARIS backend versions.
+    formData.append("latitude", latitude || "12.2958");
+    formData.append("longitude", longitude || "76.6394");
+    formData.append("heading", heading || "0");
+    formData.append("lat", latitude || "12.2958");
+    formData.append("lon", longitude || "76.6394");
+
     try {
-      const response = await fetch(`${API_BASE}/detect`, {
+      /*
+       * The JSON analysis endpoint is preferred because the dashboard needs
+       * detections, confidence, risk, coordinates and verification data.
+       */
+      let response = await fetch(`${API_BASE}/analyze`, {
         method: "POST",
         body: formData,
       });
+
+      /*
+       * Some SONARIS backend versions expose /detect/visualize instead.
+       * If /analyze is unavailable, try that endpoint automatically.
+       */
+      if (response.status === 404) {
+        response = await fetch(`${API_BASE}/detect/visualize`, {
+          method: "POST",
+          body: formData,
+        });
+      }
 
       if (!response.ok) {
         let detail = "";
@@ -196,24 +218,21 @@ function App() {
         );
       }
 
-      const data = await response.json();
+      const contentType = response.headers.get("content-type") || "";
 
-      const normalized = normalizeResult({
-        ...data,
-        telemetry: {
-          latitude: latitude || "12.2958",
-          longitude: longitude || "76.6394",
-          heading: heading || "0",
-        },
-      });
+      /*
+       * JSON response: full AI result.
+       */
+      if (contentType.includes("application/json")) {
+        const data = await response.json();
+        const normalized = normalizeResult(data);
 
-      console.log("SONARIS AI RESULT:", normalized);
-      console.log(
-        "DETECTIONS:",
-        JSON.stringify(normalized.detections, null, 2)
-      );
+        console.log("SONARIS AI RESULT:", normalized);
+        console.log(
+          "DETECTIONS:",
+          JSON.stringify(normalized.detections, null, 2)
+        );
 
-<<<<<<< HEAD
         setAnalysisResult(normalized);
         loadMemory();
         setPage("results");
@@ -249,16 +268,12 @@ function App() {
       }
 
       throw new Error("Unexpected response received from SONARIS backend.");
-=======
-      setAnalysisResult(normalized);
-      setPage("results");
->>>>>>> 5aafee3 (Update SONARIS frontend)
     } catch (err) {
       console.error("SONARIS ANALYSIS ERROR:", err);
 
       if (err instanceof TypeError) {
         setError(
-          "Cannot reach the SONARIS AI backend. Check the backend URL and try again."
+          "Cannot reach the SONARIS backend. Start FastAPI on port 8000 and try again."
         );
       } else {
         setError(err.message || "SONARIS analysis failed.");
